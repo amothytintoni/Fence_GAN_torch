@@ -22,6 +22,8 @@ def show_images(img_array, result_path):
         if len(img.shape) == 2:
             plt.imshow(img, cmap='gray')
         else:
+            img = np.swapaxes(img, 0, 2)
+            img = np.swapaxes(img, 0, 1)
             plt.imshow(img)
         plt.xticks([])
         plt.yticks([])

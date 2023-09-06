@@ -66,6 +66,7 @@ def get_mnist(ano_class):
         (np.ones(normal_num-int(0.95*normal_num)), np.zeros(ano_num-ano_num*3//4)))
 
     # swap axes from tf configuration to torch
+    print('X_train size:', x_val.shape)
     x_train = np.swapaxes(x_train, 1, 3)
     x_train = np.swapaxes(x_train, 2, 3)
     x_val = np.swapaxes(x_val, 1, 3)
@@ -78,12 +79,14 @@ def get_mnist(ano_class):
 
 def get_cifar10(ano_class):
 
-    X_train = datasets.MNIST('.', download=True, train=True)
-    y_train = X_train.targets.numpy()
-    X_train = X_train.data.numpy()
-    X_test = datasets.MNIST('.', download=True, train=False)
-    y_test = X_test.targets.numpy()
-    X_test = X_test.data.numpy()
+    X_train = datasets.CIFAR10('.', download=True, train=True)
+    y_train = np.array(X_train.targets)
+    X_train = X_train.data
+    X_test = datasets.CIFAR10('.', download=True, train=False)
+    y_test = np.array(X_test.targets)
+    X_test = X_test.data
+
+    # print(X_train.shape)
 
     X_train_anomaly = X_train[np.where(y_train == ano_class)[0]]
     X_train_normal = X_train[np.where(y_train != ano_class)[0]]
@@ -142,6 +145,7 @@ def get_cifar10(ano_class):
     y_test = np.asarray(np.concatenate([y_test_normal, y_test_anomaly]))
 
     # swap axes from tf configuration to torch
+    print('X_train size:', X_val.shape)
     X_train = np.swapaxes(X_train, 1, 3)
     X_train = np.swapaxes(X_train, 2, 3)
     X_val = np.swapaxes(X_val, 1, 3)

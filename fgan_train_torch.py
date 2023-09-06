@@ -64,7 +64,6 @@ def pretrain(args, G, D, GAN, x_train, x_test, y_test, x_val, y_val, dopt):
     pretrain_epoch = args.pretrain
     latent_dim = args.latent_dim
     for e in range(pretrain_epoch):
-        # for e in range(1):
         with trange(x_train.shape[0]//batch_size, ascii=True, desc='Pretrain_Epoch {}'.format(e+1)) as t:
             for step in t:
 
@@ -121,7 +120,6 @@ def train(args, G, D, GAN, x_train, x_test, y_test, x_val, y_val, dopt, gopt):
 
     print('===== Start of Adversarial Training =====')
     for epoch in range(epochs):
-        # for epoch in range(2):
         # try:
         with trange(x_train.shape[0]//batch_size, ascii=True, desc='Epoch {}'.format(epoch+1)) as t:
             for step in t:
@@ -172,6 +170,7 @@ def train(args, G, D, GAN, x_train, x_test, y_test, x_val, y_val, dopt, gopt):
                 GAN = GAN.to(device)
                 x = torch.tensor(x).float().to(device)
                 y = torch.tensor(y).float().to(device)
+
                 output = GAN(D, G, x)
                 G_out = GAN.get_G_out()
                 gan_criterion = com_conv(G_out, args.beta, 2)
@@ -202,7 +201,7 @@ def train(args, G, D, GAN, x_train, x_test, y_test, x_val, y_val, dopt, gopt):
                 best_test = test
                 histogram(G, D, GAN, x_test, y_test, result_path, latent_dim)
                 noise = noise_data(25, latent_dim)
-                noise = torch.tensor(noise).float().cuda()
+                noise = torch.tensor(noise).float().to(device)
                 show_images(G(noise).cpu().detach().numpy(), result_path)
 
                 torch.save(G.state_dict(),

@@ -18,16 +18,17 @@ def get_wd_params(model: nn.Module):
     decay = list()
     no_decay = list()
     for name, param in model.named_parameters():
-        # print('checking {}'.format(name))
+
         if hasattr(param, 'requires_grad') and not param.requires_grad:
             continue
-        # 'norm' not in name and 'bn' not in name and 'BatchN' not in name:
+
         if 'weight' in name and 'conv' in name:
             decay.append(param)
             # print(name, 'dec')
         else:
             no_decay.append(param)
             # print(name, 'no')
+
     return decay, no_decay
 
 
@@ -71,30 +72,51 @@ def get_cifar10_model(args):
         # transpose convolution original_output_size = (inp_size-1)*stride + kernel_size
         # hence transpose padding = kernel_size - stride [for each dimension]
 
+        def __init__(self):
+            super(Generator_Cifar, self).__init__()
+            self.fc1 = nn.Linear(256, 256*2*2)
+            self.bn1 = nn.BatchNorm2d(256)
+            self.activ1 = nn.LeakyReLU(negative_slope=0.2)
+            self.conv1 = nn.ConvTranspose2d(256, 128, kernel_size=(
+                5, 5), stride=2, padding=2, output_padding=1)
+
+            self.bn2 = nn.BatchNorm2d(128)
+            self.activ2 = nn.LeakyReLU(negative_slope=0.2)
+            self.conv2 = nn.ConvTranspose2d(128, 64, kernel_size=(
+                5, 5), stride=2, padding=2, output_padding=1)
+
+            self.bn3 = nn.BatchNorm2d(64)
+            self.activ3 = nn.LeakyReLU(negative_slope=0.2)
+            self.conv3 = nn.ConvTranspose2d(64, 32, kernel_size=(
+                5, 5), stride=2, padding=2, output_padding=1)
+
+            self.bn4 = nn.BatchNorm2d(32)
+            self.activ4 = nn.LeakyReLU(negative_slope=0.2)
+            self.conv4 = nn.ConvTranspose2d(32, 3, kernel_size=(
+                5, 5), stride=2, padding=2, output_padding=1)
+
+            self.activ5 = nn.Tanh()
+
         def forward(self, x):
-
-            x = nn.Linear(256, 256*2*2)(x)
+            x = self.fc1(x)
             x = x.view(-1, 256, 2, 2)
-            x = nn.BatchNorm2d(256)(x)
-            x = nn.LeakyReLU(negative_slope=0.2)(x)
-            x = nn.ConvTranspose2d(256, 128, kernel_size=(
-                5, 5), stride=2, padding=2, output_padding=1)(x)  # size becomes 128*4*4
+            x = self.bn1(x)
+            x = self.activ1(x)
+            x = self.conv1(x)  # size becomes 128*4*4
 
-            x = nn.BatchNorm2d(128)(x)
-            x = nn.LeakyReLU(negative_slope=0.2)(x)
-            x = nn.ConvTranspose2d(128, 64, kernel_size=(
-                5, 5), stride=2, padding=2, output_padding=1)(x)
+            x = self.bn2(x)
+            x = self.activ2(x)
+            x = self.conv2(x)
 
-            x = nn.BatchNorm2d(64)(x)
-            x = nn.LeakyReLU(negative_slope=0.2)(x)
-            x = nn.ConvTranspose2d(64, 32, kernel_size=(
-                5, 5), stride=2, padding=2, output_padding=1)(x)
+            x = self.bn3(x)
+            x = self.activ3(x)
+            x = self.conv3(x)
 
-            x = nn.BatchNorm2d(32)(x)
-            x = nn.LeakyReLU(negative_slope=0.2)(x)
-            x = nn.ConvTranspose2d(32, 3, kernel_size=(
-                5, 5), stride=2, padding=2, output_padding=1)(x)
-            x = nn.Tanh()(x)
+            x = self.bn4(x)
+            x = self.activ4(x)
+            x = self.conv4(x)
+
+            x = self.activ5(x)
 
             return x
 
@@ -125,6 +147,7 @@ def get_cifar10_model(args):
             self.flatten = nn.Flatten()
             self.dropout = nn.Dropout(0.2)
             self.linear1 = nn.Linear(256*2*2, 1)
+            # dont need sigmoid as we can utilize BCEWithLogitsLoss
 
         def forward(self, x):
             x = self.conv1(x)  # incl regularizer in optim later
@@ -261,6 +284,7 @@ def get_mnist_model(args):
 
             self.fc2 = nn.Linear(1024, 1)
             torch.nn.init.normal_(self.fc2.weight, std=0.02)
+            # dont need sigmoid as we can utilize BCEWithLogitsLoss
 
         def forward(self, x):
             x = self.conv1(x)
