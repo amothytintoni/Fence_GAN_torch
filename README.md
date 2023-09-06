@@ -39,7 +39,7 @@ Check results and plots under `result` folder
     --latent_dim 256 --evaluation 'auroc'
     
 ### KDD99
-Unzip the KDD99_Final.zip and then run main.py. Hyperparameters are set as global variables in the main.py file
+Unzip the KDD99_Final.zip and then run Fence_GAN.py. Hyperparameters are set as global variables in the Fence_GAN.py file
 
 ### More training option
 Enter `python3 main.py -h` for more training options
