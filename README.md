@@ -1,5 +1,5 @@
 # Fence_GAN_torch
-PyTorch implementation of Fence GAN [(link)](https://arxiv.org/abs/1904.01209)
+PyTorch implementation of Fence GAN [(link to paper)](https://arxiv.org/abs/1904.01209) <br>
 Official implementation (in TensorFlow) [(link)](https://github.com/phuccuongngo99/Fence_GAN/tree/master)
 
 ## Prerequisites
