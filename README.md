@@ -2,8 +2,6 @@
 PyTorch implementation of Fence GAN [(link)](https://arxiv.org/abs/1904.01209)
 Official implementation (in TensorFlow) [(link)](https://github.com/phuccuongngo99/Fence_GAN/tree/master)
 
-Download all files in one folder and use sample commands below for respective datasets:
-
 ## Prerequisites
 1. Windows OS
 2. Python 3
@@ -21,7 +19,7 @@ Download all files in one folder and use sample commands below for respective da
 
     or
 
-    conda install --yes --file requirements.txt
+    conda create --name fence_gan_env --file requirements.txt
     ```
 
 ## Anomaly Detection
