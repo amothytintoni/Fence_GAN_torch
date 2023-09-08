@@ -26,7 +26,7 @@ Official implementation (in TensorFlow) [(link)](https://github.com/phuccuongngo
 Check results and plots under `result` folder
 ### 2D Synthetic Dataset
     
-    python3 2D_experiment/2D_fgan.py
+    python3 2D_fgan.py
     
 ### MNIST
     python3 main.py --dataset mnist --ano_class 0 --epochs 100 --alpha 0.1 --beta 30 
