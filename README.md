@@ -38,6 +38,9 @@ Check results and plots under `result` folder
     --gamma 0.5 --batch_size 128 --pretrain 15 --d_lr 1e-4 --g_lr 1e-3 --v_freq 1 
     --latent_dim 256 --evaluation 'auroc'
 
+### KDD99
+Unzip the KDD99_Final.zip and then run Fence_GAN.py. Hyperparameters are set as global variables in the Fence_GAN.py file
+
 ### More training option
 Enter `python3 main.py -h` for more training options
 ```
