@@ -4,7 +4,7 @@ Official implementation (in TensorFlow) [(link)](https://github.com/phuccuongngo
 
 ## Prerequisites
 1. Windows OS
-2. Python 3
+2. Python
 3. PyTorch
 
 ## Installation
@@ -15,7 +15,7 @@ Official implementation (in TensorFlow) [(link)](https://github.com/phuccuongngo
 
 2. Install necessary libraries
     ```
-    pip3 install -r requirements.txt
+    pip install -r requirements.txt
 
     or
 
@@ -26,15 +26,15 @@ Official implementation (in TensorFlow) [(link)](https://github.com/phuccuongngo
 Check results and plots under `result` folder
 ### 2D Synthetic Dataset
     
-    python3 2D_fgan.py
+    python 2D_fgan.py
     
 ### MNIST
-    python3 main.py --dataset mnist --ano_class 0 --epochs 100 --alpha 0.1 --beta 30 
+    python main.py --dataset mnist --ano_class 0 --epochs 100 --alpha 0.1 --beta 30 
     --gamma 0.1 --batch_size 200 --pretrain 15 --d_lr 1e-5 --g_lr 2e-5 --v_freq 4 
     --latent_dim 200 --evaluation 'auprc'
 
 ### CIFAR10
-    python3 main.py --dataset cifar10 --ano_class 0 --epochs 150 --alpha 0.5 --beta 10 
+    python main.py --dataset cifar10 --ano_class 0 --epochs 150 --alpha 0.5 --beta 10 
     --gamma 0.5 --batch_size 128 --pretrain 15 --d_lr 1e-4 --g_lr 1e-3 --v_freq 1 
     --latent_dim 256 --evaluation 'auroc'
 
@@ -42,7 +42,7 @@ Check results and plots under `result` folder
 Unzip the KDD99_Final.zip and then run Fence_GAN.py. Hyperparameters are set as global variables in the Fence_GAN.py file
 
 ### More training option
-Enter `python3 main.py -h` for more training options
+Enter `python main.py -h` for more training options
 ```
     usage: Train your Fence GAN [-h] [--dataset DATASET] [--ano_class ANO_CLASS]
                                 [--epochs EPOCHS] [--beta BETA] [--gamma GAMMA]
