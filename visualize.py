@@ -36,9 +36,10 @@ def compute_au(D, G, GAN, x_val, y_val, x_test, y_test, mode):
     '''
     Return auprc or auroc evaluated on validation/test set
     '''
-    D = D.to(torch.device('cuda'))
-    x_val = torch.tensor(x_val).cuda().float()
-    x_test = torch.tensor(x_test).cuda().float()
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    D = D.to(device)
+    x_val = torch.tensor(x_val).to(device).float()
+    x_test = torch.tensor(x_test).to(device).float()
 
     if mode == 'auprc':
         # VALIDATION
@@ -70,11 +71,12 @@ def compute_au(D, G, GAN, x_val, y_val, x_test, y_test, mode):
 
 
 def histogram(G, D, GAN, x_test, y_test, result_path, latent_dim):
-    D = D.to(torch.device('cuda'))
-    x_test = torch.tensor(x_test).to(torch.device('cuda')).float()
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    D = D.to(device)
+    x_test = torch.tensor(x_test).to(device).float()
 
     gan_in = torch.tensor(np.random.normal(
-        0, 1, [5000, latent_dim])).to(torch.device('cuda'))
+        0, 1, [5000, latent_dim])).to(device)
     # y_gen_pred = np.squeeze(gan_in)
 
     y_gen_pred = gan_in

@@ -1,4 +1,7 @@
+
+
 # from tensorflow import set_random_seed
+from copy import deepcopy
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,32 +11,59 @@ import matplotlib.pyplot as plt
 # from keras.optimizers import Adam
 # from keras import losses
 # import keras.backend as K
-from custom_losses2 import com_conv
+from util import com_conv, gen_asymm, outline_loss
 import torch
 from torch import nn
+import argparse
+import time
 
 from numpy.random import seed
-seed(1)
-torch.manual_seed(1)
+seed(4)
+torch.manual_seed(4)
 torch.set_default_dtype(torch.float32)
 
+parser = argparse.ArgumentParser('2D synthetic Data Fence GAN')
+parser.add_argument('--ol', '-ol', action='store_false', help='disable outline loss')
+parser.add_argument('--asym', '-asym', action='store_false',
+                    help='disable asymmetric data, revert back to original circular data')
+parser.add_argument('--kappa', '-k', type=float, default=0.5,
+                    help='outline loss weighting hyperparameter')
+parser.add_argument('--folder_naming', '-fn', action='store_false',
+                    help='disable automatically unique naming the result folder for each run')
+parser.add_argument('--omega', '-o', type=float, default=1.2,
+                    help='closeness hyperparameter for outline loss')
+parser.add_argument('--plot_contour', '-c', action='store_false',
+                    help='disable generation of contour+real data plots')
+parser.add_argument('--contour_only', '-co', action='store_true',
+                    help='generate contour only plots')
+parser.add_argument('--alpha', '-a', type=float, default=0.5, help='alpha hyperparameter')
+parser.add_argument('--beta', '-b', type=float, default=15, help='beta hyperparameter')
+parser.add_argument('--gamma', '-g', type=float, default=0.1, help='gamma hyperparameter')
+args = parser.add_argument('--bm', '-bm', type=float, default=1,
+                           help='weighting hyperparameter for encirclement loss')
+args = parser.parse_args()
+
 ###Training hyperparameters###
-epoch = 30001
+epoch = 40001
 batch_size = 100
+pretrain_epoch = 15
+v_freq = 1000
+freq_animate = 1000
 
 
 ###Generator Hyperparameters###
-alpha = 0.5
-beta = 15
+alpha = args.alpha
+beta = args.beta
+KAPPA = args.kappa  # outline loss weighting hyperparameter
 
 ###Discriminator Hyperparameters###
-gamma = 0.1
-
+gamma = args.gamma
 
 # gm = K.variable([1])
 
-if not os.path.exists('./pictures'):
-    os.makedirs('./pictures')
+now = int(time.time())
+if args.folder_naming and not os.path.exists(f'./pictures{now}'):
+    os.makedirs(f'./pictures{now}')
 
 
 def animate(G, D, epoch, v_animate):
@@ -43,7 +73,7 @@ def animate(G, D, epoch, v_animate):
     X, Y = np.meshgrid(xlist, ylist)
     In = np.array(np.meshgrid(xlist, ylist)).T.reshape(-1, 2)
 
-    D.to(torch.device('cpu'))
+    D = D.to(torch.device('cpu'))
     In = torch.tensor(In).float()
     Out = D(In)
     In = In.detach().numpy()
@@ -54,17 +84,29 @@ def animate(G, D, epoch, v_animate):
     cp = plt.contourf(X, Y, Z, [0.0, 0.2, 0.4, 0.5, 0.6, 0.8, 1.0], colors=c)
     plt.colorbar(cp)
 
-    rx, ry = data_D(G, 500, 'real')[0].T
-    gx, gy = data_D(G, 200, 'gen')[0].T
-    # plotting the sample data, generated data
-    plt.scatter(rx, ry, color='red')
-    plt.scatter(gx, gy, color='blue')
     plt.xlabel('x-axis')
     plt.xlim(0, 40)
     plt.ylabel('y-axis')
     plt.ylim(0, 40)
+
+    if args.contour_only:
+        plt.title('Epoch'+str(epoch))
+        plt.savefig(f'./pictures{now}/'+str(int(epoch/v_animate))+'_oc.png', dpi=500)
+
+    rx, ry = data_D(G, 350, 'real')[0].T
+    plt.scatter(rx, ry, color='red')
+
+    if args.plot_contour:
+
+        plt.title('Epoch'+str(epoch))
+        plt.savefig(f'./pictures{now}/'+str(int(epoch/v_animate))+'_c.png', dpi=500)
+
+    gx, gy = data_D(G, 230, 'gen')[0].T
+    # plotting the sample data, generated data
+    plt.scatter(gx, gy, color='blue')
+
     plt.title('Epoch'+str(epoch))
-    plt.savefig('./pictures/'+str(int(epoch/v_animate))+'.png', dpi=500)
+    plt.savefig(f'./pictures{now}/'+str(int(epoch/v_animate))+'.png', dpi=500)
     plt.close()
 
 
@@ -80,7 +122,11 @@ def noise_data(n):
 
 def data_D(G, n_samples, mode):
     if mode == 'real':
-        x = real_data(n_samples)
+        if args.asym:
+            x = gen_asymm([n_samples, 2])
+        else:
+            x = real_data(n_samples)
+
         y = np.ones(n_samples)
         return x, y
 
@@ -146,6 +192,7 @@ def get_discriminative():
             self.fc2 = nn.Linear(15, 15)
             self.fc3 = nn.Linear(15, 1)
             self.activ = nn.ReLU()
+            # self.sigm = nn.Sigmoid()
 
         def forward(self, inp):
             # print(inp.size())
@@ -155,6 +202,7 @@ def get_discriminative():
             x = self.fc2(x)
             x = self.activ(x)
             x = self.fc3(x)
+            # x = self.sigm(x)
 
             return x
 
@@ -194,12 +242,14 @@ def make_gan(G, D):  # making (G+D) framework
     return GAN, gopt
 
 
-def pretrain(G, D, dopt, epoch=20, n_samples=batch_size):  # pretrain D
+def pretrain(G, D, dopt, epoch=pretrain_epoch, n_samples=batch_size):  # pretrain D
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
+    # dopt2 = deepcopy(dopt)
     for epoch in range(epoch):
         D.train()
         dopt.zero_grad()
+        # dopt2.zero_grad()
 
         loss_temp = []
         set_trainability(D, True)
@@ -213,6 +263,9 @@ def pretrain(G, D, dopt, epoch=20, n_samples=batch_size):  # pretrain D
         loss1 = D_loss(y, output)
 
         loss_temp.append(loss1)
+        loss1.backward()
+        dopt.step()
+        dopt.zero_grad()
 
         set_trainability(D, True)
         x, y = data_D(G, n_samples, 'gen')
@@ -224,26 +277,30 @@ def pretrain(G, D, dopt, epoch=20, n_samples=batch_size):  # pretrain D
         loss2 = D_loss(y, output)
 
         loss_temp.append(loss2)
+        loss2.backward()
+        dopt.step()
 
         loss = (loss1+loss2)/2
-        loss.backward()
-        dopt.step()
+        # loss.backward()
+        # dopt.step()
 
         print('Pretrain Epoch {} Dis Loss {}'.format(
             epoch, sum(loss_temp)/len(loss_temp)))
 
 
-def train(GAN, G, D, dopt, gopt, epochs=epoch, n_samples=batch_size, v_freq=100, v_animate=1000):
+def train(GAN, G, D, dopt, gopt, epochs=epoch, n_samples=batch_size, v_freq=v_freq, v_animate=freq_animate):
 
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
     d_loss = []
     g_loss = []
+    # dopt2 = deepcopy(dopt)
 #    data_show = sample_noise(n_samples=n_samples)[0]
     for epoch in range(epochs):
         try:
             D.train()
             dopt.zero_grad()
+            # dopt2.zero_grad()
 
             loss_temp = []
             set_trainability(D, True)
@@ -251,10 +308,14 @@ def train(GAN, G, D, dopt, gopt, epochs=epoch, n_samples=batch_size, v_freq=100,
             D = D.to(device)
             x = torch.tensor(x).float().to(device)
             y = torch.tensor(y).float().to(device)
+            realdata = deepcopy(x)
             output = D(x)
             loss1 = D_loss(y, output)
 
             loss_temp.append(loss1)
+            loss1.backward()
+            dopt.step()
+            dopt.zero_grad()
 
             set_trainability(D, True)
             x, y = data_D(G, n_samples, 'gen')
@@ -265,12 +326,14 @@ def train(GAN, G, D, dopt, gopt, epochs=epoch, n_samples=batch_size, v_freq=100,
             loss2 = D_loss(y, output)
 
             loss_temp.append(loss2)
-
-            loss = (loss1+loss2)/2
-            loss.backward()
+            loss2.backward()
             dopt.step()
 
-            d_loss.append(sum(loss_temp)/len(loss_temp))
+            loss = (loss1+loss2)/2
+            # loss.backward()
+            # dopt.step()
+
+            d_loss.append(loss)
 
             # Train Generator
             GAN.train()
@@ -284,10 +347,16 @@ def train(GAN, G, D, dopt, gopt, epochs=epoch, n_samples=batch_size, v_freq=100,
             GAN = GAN.to(device)
             G = G.to(device)
 
-            output = GAN(D, G, x)
+            output = GAN(D, G, X)
             G_out = GAN.get_G_out()
-            gan_criterion = com_conv(G_out, beta, 2)
+            gan_criterion = com_conv(G_out, beta, 2, args.bm)
             gan_loss = gan_criterion(y, output)
+
+            if args.ol:
+                ol_loss = outline_loss(G_out, realdata, args.omega)
+                if (epoch + 1) % v_freq == 0:
+                    print('GAN loss=', gan_loss, 'Outline Loss=', ol_loss)
+                gan_loss += KAPPA * ol_loss
 
             g_loss.append(gan_loss)
 
@@ -306,8 +375,8 @@ def train(GAN, G, D, dopt, gopt, epochs=epoch, n_samples=batch_size, v_freq=100,
         except KeyboardInterrupt:
             break
 
-    torch.save(G.state_dict(), 'Circle_G.pth')
-    torch.save(D.state_dict(), 'Circle_D.pth')
+    torch.save(G.state_dict(), f'Circle_G_{now}.pth')
+    torch.save(D.state_dict(), f'Circle_D_{now}.pth')
 
     return d_loss, g_loss
 

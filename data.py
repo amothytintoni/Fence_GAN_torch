@@ -13,12 +13,12 @@ def load_data(args):
     # Dataset: mnist, cifar10, kdd99, custom
     # Ano_class: 1 actual class label of the dataset
     if args.dataset == 'mnist':
-        return get_mnist(args.ano_class)
+        return get_mnist(args.ano_class, args.small)
     elif args.dataset == 'cifar10':
-        return get_cifar10(args.ano_class)
+        return get_cifar10(args.ano_class, args.small)
 
 
-def get_mnist(ano_class):
+def get_mnist(ano_class, small=False):
     '''
     There are 2 classes: normal and anomalous
     - Training data: x_train: 80% of data/images from normal classes
@@ -26,12 +26,37 @@ def get_mnist(ano_class):
     - Testing data: x_test: 15% of data/images from normal classes + 75% of data/images from anomalous classes
     '''
 
-    x_tr = datasets.MNIST('.', download=True, train=True)
+    x_tr = datasets.MNIST('.', download=False, train=True)
     y_tr = x_tr.targets.numpy()
     x_tr = x_tr.data.numpy()
-    x_tst = datasets.MNIST('.', download=True, train=False)
+    x_tst = datasets.MNIST('.', download=False, train=False)
     y_tst = x_tst.targets.numpy()
     x_tst = x_tst.data.numpy()
+
+    if small:
+        cltr = np.zeros(int(len(y_tr)/10), dtype=int)
+        cltst = np.zeros(int(len(y_tst)/10), dtype=int)
+
+        trcount = 0
+        tstcount = 0
+        for i in range(10):
+            tg1 = np.where(y_tr == i)[0]
+            # import pdb; pdb.set_trace()
+            y1 = np.random.choice(tg1, int(len(tg1)/10), replace=False)
+            cltr[trcount:trcount+len(y1)] = y1
+            trcount += len(y1)
+
+            tg2 = np.where(y_tst == i)[0]
+            y2 = np.random.choice(tg2, int(len(tg2)/10), replace=False)
+            cltst[tstcount:tstcount+len(y2)] = y2
+            tstcount += len(y2)
+
+        cltr = cltr[:trcount]
+        cltst = cltst[:tstcount]
+        y_tr = y_tr[cltr]
+        x_tr = x_tr[cltr]
+        y_tst = y_tst[cltst]
+        x_tst = x_tst[cltst]
 
     x_total = np.concatenate([x_tr, x_tst])
     y_total = np.concatenate([y_tr, y_tst])
@@ -66,7 +91,7 @@ def get_mnist(ano_class):
         (np.ones(normal_num-int(0.95*normal_num)), np.zeros(ano_num-ano_num*3//4)))
 
     # swap axes from tf configuration to torch
-    print('X_train size:', x_val.shape)
+    print('X_val size:', x_val.shape)
     x_train = np.swapaxes(x_train, 1, 3)
     x_train = np.swapaxes(x_train, 2, 3)
     x_val = np.swapaxes(x_val, 1, 3)
@@ -77,14 +102,39 @@ def get_mnist(ano_class):
     return x_train, x_test, y_test, x_val, y_val
 
 
-def get_cifar10(ano_class):
+def get_cifar10(ano_class, small=False):
 
-    X_train = datasets.CIFAR10('.', download=True, train=True)
+    X_train = datasets.CIFAR10('.', download=False, train=True)
     y_train = np.array(X_train.targets)
     X_train = X_train.data
-    X_test = datasets.CIFAR10('.', download=True, train=False)
+    X_test = datasets.CIFAR10('.', download=False, train=False)
     y_test = np.array(X_test.targets)
     X_test = X_test.data
+
+    if small:
+        cltrain = np.zeros(int(len(y_train)/10), dtype=int)
+        cltest = np.zeros(int(len(y_test)/10), dtype=int)
+
+        traincount = 0
+        testcount = 0
+        for i in range(10):
+            tg1 = np.where(y_train == i)[0]
+            # import pdb; pdb.set_trainace()
+            y1 = np.random.choice(tg1, int(len(tg1)/10), replace=False)
+            cltrain[traincount:traincount+len(y1)] = y1
+            traincount += len(y1)
+
+            tg2 = np.where(y_test == i)[0]
+            y2 = np.random.choice(tg2, int(len(tg2)/10), replace=False)
+            cltest[testcount:testcount+len(y2)] = y2
+            testcount += len(y2)
+
+        cltrain = cltrain[:traincount]
+        cltest = cltest[:testcount]
+        y_train = y_train[cltrain]
+        X_train = X_train[cltrain]
+        y_test = y_test[cltest]
+        X_test = X_test[cltest]
 
     # print(X_train.shape)
 
@@ -145,7 +195,7 @@ def get_cifar10(ano_class):
     y_test = np.asarray(np.concatenate([y_test_normal, y_test_anomaly]))
 
     # swap axes from tf configuration to torch
-    print('X_train size:', X_val.shape)
+    print('X_val size:', X_val.shape)
     X_train = np.swapaxes(X_train, 1, 3)
     X_train = np.swapaxes(X_train, 2, 3)
     X_val = np.swapaxes(X_val, 1, 3)

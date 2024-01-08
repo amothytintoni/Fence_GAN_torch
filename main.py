@@ -16,6 +16,8 @@ args = parser.add_argument('--gamma', type=float, default=0.1, help='gamma')
 args = parser.add_argument('--alpha', type=float, default=0.5, help='alpha')
 
 # Other hyperparameters
+args = parser.add_argument('--id', '-id', type=str,
+                           default='run1', help='unique run id')
 args = parser.add_argument('--batch_size', type=int, default=200, help='')
 args = parser.add_argument('--pretrain', type=int, default=15,
                            help='number of pretrain epoch')
@@ -33,6 +35,24 @@ args = parser.add_argument('--evaluation', type=str,
                            default='auprc', help="'auprc' or 'auroc'")
 args = parser.add_argument('--latent_dim', type=int, default=200,
                            help='Latent dimension of Gaussian noise input to Generator')
+args = parser.add_argument('--ol', '-ol', action='store_true',
+                           help='Include Outline Loss')
+args = parser.add_argument('--kappa', '-k', type=float, default=0.0015,
+                           help='weighting hyperparameter for outline loss. Default \
+                               0.0015 for MNIST and 0.2 for CIFAR-10')
+args = parser.add_argument('--omega', '-o', type=float, default=945,
+                           help='closeness hyperparameter for outline loss. Default \
+                               945 for MNIST and 36 for CIFAR-10')
+args = parser.add_argument('--save_model', '-sav', action='store_false',
+                           help='omit saving model')
+args = parser.add_argument('--progress_bar', '-prg', action='store_false',
+                           help='omit progress bar')
+args = parser.add_argument('--bm', '-bm', type=float, default=1,
+                           help='weighting hyperparameter for encirclement loss')
+args = parser.add_argument('--small', '-s', action='store_true',
+                           help='10% dataset size')
+args = parser.add_argument('--verif', '-vf', action='store_true',
+                           help='verbose for outline loss')
 
 args = parser.parse_args()
 

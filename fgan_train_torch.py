@@ -7,6 +7,8 @@ import json
 import random
 from tqdm import trange
 from collections import OrderedDict
+import time
+from copy import deepcopy
 
 import numpy as np
 from numpy.random import seed
@@ -91,13 +93,15 @@ def pretrain(args, G, D, GAN, x_train, x_test, y_test, x_val, y_val, dopt):
                 loss.backward()
                 dopt.step()
 
-                t.set_postfix(D_loss=loss)
-        print("\tDisc. Loss: {:.3f}".format(loss))
+                if args.progress_bar:
+                    t.set_postfix(D_loss=loss)
+        print("\tDisc. Loss: {:.4f}".format(loss))
     print("===== End of Pretraining =====")
 
 
 def train(args, G, D, GAN, x_train, x_test, y_test, x_val, y_val, dopt, gopt):
     # Adversarial Training
+    now = time.time()
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     epochs = args.epochs
     batch_size = args.batch_size
@@ -108,8 +112,8 @@ def train(args, G, D, GAN, x_train, x_test, y_test, x_val, y_val, dopt, gopt):
 
     if not os.path.exists('./result/{}/'.format(args.dataset)):
         os.makedirs('./result/{}/'.format(args.dataset))
-    result_path = './result/{}/{}'.format(args.dataset,
-                                          len(os.listdir('./result/{}/'.format(args.dataset))))
+    result_path = './result/{}'.format(args.dataset)  # ,
+    # len(os.listdir('./result/{}/'.format(args.dataset))))
     if not os.path.exists(result_path):
         os.makedirs(result_path)
 
@@ -138,6 +142,7 @@ def train(args, G, D, GAN, x_train, x_test, y_test, x_val, y_val, dopt, gopt):
                 x = x.float().to(device)
                 y = y.float().to(device)
 
+                realdata = deepcopy(x)
                 output = D(x)
                 loss1 = args.gamma * D_loss(y, output)
                 loss_temp.append(loss1)
@@ -173,14 +178,24 @@ def train(args, G, D, GAN, x_train, x_test, y_test, x_val, y_val, dopt, gopt):
 
                 output = GAN(D, G, x)
                 G_out = GAN.get_G_out()
-                gan_criterion = com_conv(G_out, args.beta, 2)
+                gan_criterion = com_conv(G_out, args.beta, 2, args.bm)
                 gan_loss = gan_criterion(y, output)
+
+                ol_loss = 0
+                if args.ol:
+                    ol_loss = outline_loss(G_out, realdata, args.omega, 2, args.verif)
+                    if (epoch + 1) % v_freq == 0:
+                        print('GAN loss=', gan_loss, 'Outline Loss=', ol_loss)
+                    gan_loss += args.kappa * ol_loss
+
                 g_loss.append(gan_loss)
 
                 gan_loss.backward()
                 gopt.step()
 
-                t.set_postfix(G_loss=g_loss[-1], D_loss=d_loss[-1])
+                if args.progress_bar:
+                    t.set_postfix(G_loss=g_loss[-1], D_loss=d_loss[-1],
+                                  O_loss=args.kappa * ol_loss)
         # except KeyboardInterrupt:  # hit control-C to exit and save video there
         #     break
 
@@ -191,7 +206,7 @@ def train(args, G, D, GAN, x_train, x_test, y_test, x_val, y_val, dopt, gopt):
         if (epoch + 1) % v_freq == 0:
             val, test = compute_au(D, G, GAN, x_val, y_val, x_test, y_test, evaluation)
 
-            f = open('{}/logs.txt'.format(result_path), 'a+')
+            f = open('{}/logs{}.txt'.format(result_path, args.id), 'a+')
             f.write('\nEpoch: {}\n\t Val_{}: {:.3f} \n\t Test_{}: {:.3f}'.format(
                 epoch+1, evaluation, val, evaluation, test))
             f.close()
@@ -199,15 +214,16 @@ def train(args, G, D, GAN, x_train, x_test, y_test, x_val, y_val, dopt, gopt):
             if val > best_val:
                 best_val = val
                 best_test = test
-                histogram(G, D, GAN, x_test, y_test, result_path, latent_dim)
+                # histogram(G, D, GAN, x_test, y_test, result_path, latent_dim)
                 noise = noise_data(25, latent_dim)
                 noise = torch.tensor(noise).float().to(device)
-                show_images(G(noise).cpu().detach().numpy(), result_path)
+                # show_images(G(noise).cpu().detach().numpy(), result_path)
 
-                torch.save(G.state_dict(),
-                           '{}/gen_anoclass_{}.pth'.format(result_path, ano_class))
-                torch.save(D.state_dict(),
-                           '{}/dis_anoclass_{}.pth'.format(result_path, ano_class))
+                if args.save_model:
+                    torch.save(G.state_dict(),
+                               '{}/gen_anoclass_{}.pth'.format(result_path, ano_class))
+                    torch.save(D.state_dict(),
+                               '{}/dis_anoclass_{}.pth'.format(result_path, ano_class))
 
             print("\tGen. Loss: {:.3f}\n\tDisc. Loss: {:.3f}\n\t{}: {:.3f}".format(
                 g_loss[-1], d_loss[-1], evaluation, val))
@@ -223,7 +239,7 @@ def train(args, G, D, GAN, x_train, x_test, y_test, x_val, y_val, dopt, gopt):
     result = [("best_test_{}".format(evaluation), round(best_test, 3)),
               ("best_val_{}".format(evaluation), round(best_val, 3))]
     result_dict = OrderedDict(result)
-    with open('{}/result.json'.format(result_path), 'w+') as outfile:
+    with open('{}/result{}.json'.format(result_path, args.id), 'w+') as outfile:
         json.dump(result_dict, outfile, indent=4)
 
 
